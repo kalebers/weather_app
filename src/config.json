@@ -1,3 +1,7 @@
 {
-    "api_key": ""
-  }
+  "api_key": "",
+  "current_cast_url" : "http://api.openweathermap.org/data/2.5/weather?",
+  "forecast_url": "http://api.openweathermap.org/data/2.5/forecast?",
+  "weather_maps_url": "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?",
+  "air_polution_url": "http://api.openweathermap.org/data/2.5/air_pollution?"
+}
