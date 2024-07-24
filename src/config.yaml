@@ -1,5 +1,5 @@
 ---
-api_key: f3df810abe0d6e8301a4bad7e2d8141f
+api_key:
 current_cast_url: http://api.openweathermap.org/data/2.5/weather?
 forecast_url: http://api.openweathermap.org/data/2.5/forecast?
 weather_maps_url: https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?
