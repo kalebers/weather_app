@@ -4,6 +4,8 @@ import logging
 import json
 from typing import Optional, Dict, Any
 import random
+import io
+import pathlib
 
 # Setup logging
 logging.basicConfig(
@@ -97,12 +99,14 @@ class WeatherEndPoint:
             logging.error(f"Error fetching air pollution data: {e}")
         return None
 
-    def get_forecast(self, city_name: str) -> Optional[Dict[str, Any]]:
+    def get_forecast(self, city_name: str, days: int) -> Optional[Dict[str, Any]]:
         """
-        Get the 5-day weather forecast for a specified city.
+        Get the weather forecast for a specified city and number of days.
 
         :param city_name: The name of the city to get the weather conditions.
         :type city_name: str
+        :param days: The number of days for the forecast (maximum 5).
+        :type days: int
         :return: The response object containing the forecast data,
                                      or None if an error occurred.
         :rtype: Optional[Dict[str, Any]]
@@ -115,23 +119,46 @@ class WeatherEndPoint:
                 f"API Call {self.api_call_count}: Status Code {response.status_code}"
             )
             response.raise_for_status()
-            return response.json()
+            forecast_data = response.json()
+            if forecast_data.get("cod") == "200":
+                # Filter the forecast to include only the specified number of days
+                filtered_forecast = {
+                    "cod": forecast_data["cod"],
+                    "message": forecast_data["message"],
+                    "cnt": min(days * 8, len(forecast_data["list"])),
+                    "list": forecast_data["list"][: days * 8],
+                    "city": forecast_data["city"],
+                }
+                return filtered_forecast
+            return forecast_data
         except requests.exceptions.RequestException as e:
             logging.error(f"Error fetching forecast data: {e}")
         return None
 
     @staticmethod
-    def save_to_file(data: Dict[str, Any], filename: str) -> None:
+    def write(data: Dict[str, Any], file: io.TextIOWrapper) -> None:
         """
-        Function that saves the data from the requests into the respective JSON files.
+        Function that write the data from the requests into the respective JSON files.
 
         :param data: Passes the dict containing the weather data to be saved.
         :type data: Dict[str, Any]
-        :param filename: String of the file to get the data saved.
-        :type filename: str
+        :param fie: String of the file to get the data saved.
+        :type file: io.TextIOWrapper
         """
-        with open(filename, "w", encoding="utf-8") as file:
-            json.dump(data, file, indent=4)
+        json.dump(data, file, indent=4)
+
+    @classmethod
+    def save_to_file(cls, data: Dict[str, Any], path: pathlib.Path) -> None:
+        """
+        Function that write and saves the data into the json file.
+
+        :param data:  Passes the dict containing the weather data to be saved.
+        :type data: Dict[str, Any]
+        :param path: Passes the path for the saved file.
+        :type path: pathlib.Path
+        """
+        with open(path, "w", encoding="utf-8") as file:
+            cls.write(data, file)
 
     def random_phrases(self) -> None:
         """
@@ -152,6 +179,25 @@ class WeatherEndPoint:
             "Some ICE ICE baby!",
         ]
 
+        self.phrases_few_clouds = [
+            "Good weather for a nice walk!",
+        ]
+
+        self.scattered_cloud = [
+            "Let's guess what image the clouds make?!",
+            "Look! The sky seems like a cottom candy!",
+        ]
+
+        self.phrases_broken_clouds = [
+            "Nice sky for a few photos!",
+            "Let's exercise outside?",
+        ]
+
+        self.phrases_overcast_clouds = [
+            "Grey days can be fun!",
+            "Chill day for you today!",
+        ]
+
     def display_weather(self, data: Optional[Dict[str, Any]]) -> None:
         """
         Display the current weather data and air pollution data from the response object.
@@ -164,7 +210,9 @@ class WeatherEndPoint:
             logging.warning("No weather data available.")
             return
 
-        self.save_to_file(data, "data_files/data_display_current_weather.json")
+        self.save_to_file(
+            data, pathlib.Path("data_files") / "data_display_current_weather.json"
+        )
 
         if data.get("cod") == 200:
             main = data["main"]
@@ -181,10 +229,20 @@ class WeatherEndPoint:
             weather_description = weather["description"]
             if weather_description == "light rain":
                 print(random.choice(self.phrases_light_rain))
+            elif weather_description == "moderate rain":
+                print(random.choice(self.phrases_light_rain))
             elif weather_description == "rain":
                 print(random.choice(self.phrases_heavy_rain))
             elif weather_description == "clear sky":
                 print(random.choice(self.phrases_sunny))
+            elif weather_description == "few clouds":
+                print(random.choice(self.phrases_few_clouds))
+            elif weather_description == "scattered clouds":
+                print(random.choice(self.scattered_cloud))
+            elif weather_description == "broken clouds":
+                print(random.choice(self.phrases_broken_clouds))
+            elif weather_description == "overcast clouds":
+                print(random.choice(self.phrases_overcast_clouds))
 
             if air_pollution:
                 print(
@@ -209,7 +267,9 @@ class WeatherEndPoint:
             logging.warning("No forecast data available.")
             return
 
-        self.save_to_file(data, "data_files/data_display_forecast.json")
+        self.save_to_file(
+            data, pathlib.Path("data_files") / "data_display_forecast.json"
+        )
 
         if data.get("cod") == "200":
             print("5-Day Weather Forecast:")
@@ -221,10 +281,20 @@ class WeatherEndPoint:
 
                 if weather_description == "light rain":
                     print(random.choice(self.phrases_light_rain))
+                elif weather_description == "moderate rain":
+                    print(random.choice(self.phrases_light_rain))
                 elif weather_description == "rain":
                     print(random.choice(self.phrases_heavy_rain))
                 elif weather_description == "clear sky":
                     print(random.choice(self.phrases_sunny))
+                elif weather_description == "few clouds":
+                    print(random.choice(self.phrases_few_clouds))
+                elif weather_description == "scattered clouds":
+                    print(random.choice(self.scattered_cloud))
+                elif weather_description == "broken clouds":
+                    print(random.choice(self.phrases_broken_clouds))
+                elif weather_description == "overcast clouds":
+                    print(random.choice(self.phrases_overcast_clouds))
 
                 print(f"{dt_txt}: {main['temp']}°C, {weather['description']}")
         else:
@@ -240,7 +310,7 @@ def main() -> None:
     end_point = WeatherEndPoint("src/config.yaml")
     while True:
         choice = input(
-            "Enter 'current' for current weather, 'forecast' for 5-day forecast, 'exit' to quit: "
+            "Enter 'current' for current weather, 'forecast' for weather forecast, 'exit' to quit: "
         ).lower()
         if choice == "exit":
             print(f"Total API calls made: {end_point.api_call_count}")
@@ -250,8 +320,12 @@ def main() -> None:
             data = end_point.get_weather(city_name)
             end_point.display_weather(data)
         elif choice == "forecast":
-            data = end_point.get_forecast(city_name)
-            end_point.display_forecast(data)
+            days = int(input("Enter the number of days for the forecast (1-5): "))
+            if 1 <= days <= 5:
+                data = end_point.get_forecast(city_name, days)
+                end_point.display_forecast(data)
+            else:
+                print("Invalid number of days. Please enter a number between 1 and 5.")
         else:
             print("Invalid choice. Please try again.")
 
