@@ -20,7 +20,7 @@ class WeatherEndPoint:
     End point class to retrieve the weather data.
     """
 
-    def __init__(self, config_path: str) -> None:
+    def __init__(self, config_path: str, db_connection: sqlite3.Connection) -> None:
         self.config = self.load_config(config_path)
         self.api_key = self.config["api_key"]
         self.current_cast_url = self.config["current_cast_url"]
@@ -28,6 +28,8 @@ class WeatherEndPoint:
         self.weather_maps_url = self.config["weather_maps_url"]
         self.air_pollution_url = self.config["air_pollution_url"]
         self.api_call_count = 0
+        self.conn = db_connection
+        self.cursor = self.conn.cursor()
         self.init_db()
 
     @staticmethod
@@ -48,8 +50,6 @@ class WeatherEndPoint:
         """
         Initialize the SQLite database and create tables if they don't exist.
         """
-        self.conn = sqlite3.connect("weather_data.db", check_same_thread=False)
-        self.cursor = self.conn.cursor()
         self.cursor.execute(
             """CREATE TABLE IF NOT EXISTS api_calls (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,37 +182,41 @@ class WeatherEndPoint:
         return None
 
 
+# Initialize the database connection once
+db_connection = sqlite3.connect("weather_data.db", check_same_thread=False)
+end_point = WeatherEndPoint("src/config.yaml", db_connection)
+
 # Flask Routes
 @app.route("/")
 def home():
     return render_template("/templates/index.html")
 
 
-@app.route("/current", methods=["GET", "POST"])
-def current_weather():
+@app.route("/current/<string:city_name>", methods=["GET", "POST"])
+def current_weather(city_name: str):
     if request.method == "POST":
         city_name = request.form["city"]
         data = end_point.get_weather(city_name)
         return render_template("weather.html", weather_data=data)
-    return render_template("current.html")
+    data = end_point.get_weather(city_name)
+    return render_template("current.html", weather_data=data)
 
 
-@app.route("/forecast", methods=["GET", "POST"])
-def weather_forecast():
+@app.route("/forecast/<string:city_name>", methods=["GET", "POST"])
+def weather_forecast(city_name: str):
     if request.method == "POST":
         city_name = request.form["city"]
         days = int(request.form["days"])
         data = end_point.get_forecast(city_name, days)
         return render_template("forecast_data.html", forecast_data=data)
-    return render_template("forecast.html")
+    data = end_point.get_forecast(city_name, days=1)  # Default to 1 day if not POST
+    return render_template("forecast.html", forecast_data=data)
 
 
 def main() -> None:
     """
     Main function to run the weather application.
     """
-    global end_point
-    end_point = WeatherEndPoint("src/config.yaml")
     app.run(debug=True)
 
 
