@@ -2,7 +2,7 @@ import requests
 import yaml
 import logging
 import json
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify, render_template
 from typing import Optional, Dict, Any
 import sqlite3
 
@@ -20,14 +20,17 @@ class WeatherEndPoint:
     End point class to retrieve the weather data.
     """
 
+    _config = None  # Class variable to store configuration
+
     def __init__(self, config_path: str, db_connection: sqlite3.Connection) -> None:
-        self.config = self.load_config(config_path)
+        if WeatherEndPoint._config is None:
+            WeatherEndPoint._config = self.load_config(config_path)
+        self.config = WeatherEndPoint._config
         self.api_key = self.config["api_key"]
         self.current_cast_url = self.config["current_cast_url"]
         self.forecast_url = self.config["forecast_url"]
         self.weather_maps_url = self.config["weather_maps_url"]
         self.air_pollution_url = self.config["air_pollution_url"]
-        self.api_call_count = 0
         self.conn = db_connection
         self.cursor = self.conn.cursor()
         self.init_db()
@@ -35,8 +38,7 @@ class WeatherEndPoint:
     @staticmethod
     def load_config(config_path: str) -> Dict[str, str]:
         """
-        Passes the string for the YAML configuration file that contains the API urls and
-                the API key.
+        Loads the YAML configuration file that contains the API urls and API key.
 
         :param config_path: string for the config file path.
         :type config_path: str
@@ -57,6 +59,12 @@ class WeatherEndPoint:
                                 city_name TEXT,
                                 response_code INTEGER,
                                 data TEXT,
+                                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                               )"""
+        )
+        self.cursor.execute(
+            """CREATE TABLE IF NOT EXISTS api_call_count (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                                )"""
         )
@@ -88,7 +96,25 @@ class WeatherEndPoint:
         """
         Counter for how many times the API was requested.
         """
-        self.api_call_count += 1
+        self.cursor.execute("""INSERT INTO api_call_count DEFAULT VALUES""")
+        self.conn.commit()
+
+    def get_api_call_count(self, start_time: str, end_time: str) -> int:
+        """
+        Get the number of API calls made within a certain time frame.
+
+        :param start_time: The start time in 'YYYY-MM-DD HH:MM:SS' format.
+        :type start_time: str
+        :param end_time: The end time in 'YYYY-MM-DD HH:MM:SS' format.
+        :type end_time: str
+        :return: The number of API calls made in the specified time frame.
+        :rtype: int
+        """
+        self.cursor.execute(
+            """SELECT COUNT(*) FROM api_call_count WHERE timestamp BETWEEN ? AND ?""",
+            (start_time, end_time),
+        )
+        return self.cursor.fetchone()[0]
 
     def get_weather(self, city_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -104,9 +130,7 @@ class WeatherEndPoint:
         url = f"{self.current_cast_url}q={city_name}&appid={self.api_key}&units=metric"
         try:
             response = requests.get(url)
-            logging.info(
-                f"API Call {self.api_call_count}: Status Code {response.status_code}"
-            )
+            logging.info(f"API Call: Status Code {response.status_code}")
             response.raise_for_status()
             weather_data = response.json()
             lat, lon = weather_data["coord"]["lat"], weather_data["coord"]["lon"]
@@ -135,9 +159,7 @@ class WeatherEndPoint:
         url = f"{self.air_pollution_url}lat={lat}&lon={lon}&appid={self.api_key}"
         try:
             response = requests.get(url)
-            logging.info(
-                f"API Call {self.api_call_count}: Status Code {response.status_code}"
-            )
+            logging.info(f"API Call: Status Code {response.status_code}")
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -160,9 +182,7 @@ class WeatherEndPoint:
         url = f"{self.forecast_url}q={city_name}&appid={self.api_key}&units=metric"
         try:
             response = requests.get(url)
-            logging.info(
-                f"API Call {self.api_call_count}: Status Code {response.status_code}"
-            )
+            logging.info(f"API Call: Status Code {response.status_code}")
             response.raise_for_status()
             forecast_data = response.json()
             self.save_to_db("forecast", city_name, response.status_code, forecast_data)
@@ -189,28 +209,28 @@ end_point = WeatherEndPoint("src/config.yaml", db_connection)
 # Flask Routes
 @app.route("/")
 def home():
-    return render_template("/templates/index.html")
+    return render_template("index.html")
 
 
-@app.route("/current/<string:city_name>", methods=["GET", "POST"])
+@app.route("/weather/<string:city_name>")
 def current_weather(city_name: str):
-    if request.method == "POST":
-        city_name = request.form["city"]
-        data = end_point.get_weather(city_name)
-        return render_template("weather.html", weather_data=data)
     data = end_point.get_weather(city_name)
-    return render_template("current.html", weather_data=data)
+    return jsonify(data)
 
 
-@app.route("/forecast/<string:city_name>", methods=["GET", "POST"])
-def weather_forecast(city_name: str):
-    if request.method == "POST":
-        city_name = request.form["city"]
-        days = int(request.form["days"])
-        data = end_point.get_forecast(city_name, days)
-        return render_template("forecast_data.html", forecast_data=data)
-    data = end_point.get_forecast(city_name, days=1)  # Default to 1 day if not POST
-    return render_template("forecast.html", forecast_data=data)
+@app.route("/forecast/<string:city_name>/<int:days>")
+@app.route("/forecast/<string:city_name>", defaults={"days": 1})
+def weather_forecast(city_name: str, days: int):
+    data = end_point.get_forecast(city_name, days)
+    return jsonify(data)
+
+
+@app.route("/api_call_count", methods=["GET"])
+def api_call_count():
+    start_time = request.args.get("start_time")
+    end_time = request.args.get("end_time")
+    count = end_point.get_api_call_count(start_time, end_time)
+    return jsonify({"api_call_count": count})
 
 
 def main() -> None:

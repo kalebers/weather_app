@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Weather App</title>
+</head>
+<body>
+    <h1>Weather App</h1>
+    <button onClick = "alert ('Hello')">Clik me please</button>
+    <div x-data = "weather" x-cloak>
+        <input type = "text" name = "search" x-model.debounce.500ms = "search"></input>
+        <p x-text = "current_weather.main.temp"></p>
+        <p x-text = "current_weather.main.feels_like"></p>
+        <p x-text = "current_weather.air_pollution.list.0.components"></p>
+    </div>
+</body>
+<script>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("weather", () => ({
+            current_weather: {},
+            search:"Paris",
+            async init() {
+                this.$watch("search", async (value) => {
+                    await this.fetch_data()
+                })
+                await this.fetch_data()
+            },
+            async fetch_data() {
+                this.current_weather = await (await fetch("/weather/" + this.search)).json()
+            },
+        }))
+    })
+</script>
+</html>
