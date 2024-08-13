@@ -7,3 +7,4 @@
         - Data Base initiation
         - App paths fixed
         - Update on poetry lock
+	- Links on frontend, showing correct data
