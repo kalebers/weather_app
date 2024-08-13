@@ -1,5 +1,9 @@
 - *Currently Version*
-- *Released on 09 August 2024*
+- *Released on 13 August 2024*
+	- Fixes:
+		- Alignment of the data
+
+*Released on 09 August 2024*
     - Additions:
         - Front end page using AlpineJS.
 
