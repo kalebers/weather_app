@@ -7,12 +7,38 @@
 </head>
 <body>
     <h1>Weather App</h1>
-    <button onClick = "alert ('Hello')">Clik me please</button>
-    <div x-data = "weather" x-cloak>
-        <input type = "text" name = "search" x-model.debounce.500ms = "search"></input>
-        <p x-text = "current_weather.main.temp"></p>
-        <p x-text = "current_weather.main.feels_like"></p>
-        <p x-text = "current_weather.air_pollution.list.0.components"></p>
+    <div x-data="weather" x-cloak>
+        <input type="text" name="search" x-model.debounce.500ms="search" placeholder="Enter location"></input>
+
+        <!-- Label for Current Temperature -->
+        <style>
+            label {
+                font-weight: bold;
+                margin-right: 10px;
+            }
+        </style>
+        <label>Current Temperature:</label>
+        <p x-text="current_weather.main.temp"></p>
+
+        <!-- Label for Feels Like Temperature -->
+        <label>Feels Like Temperature:</label>
+        <p x-text="current_weather.main.feels_like"></p>
+
+        <label>Current Humidity:</label>
+        <p x-text="current_weather.main.humidity"></p>
+
+        <label>Current Max Temperature:</label>
+        <p x-text="current_weather.main.temp_max"></p>
+
+        <label>Current Min Temperature:</label>
+        <p x-text="current_weather.main.temp_min"></p>
+
+        <label>Weather Description:</label>
+        <p x-text="current_weather.weather[0].description"></p>
+
+        <!-- Label for Air Pollution CO2 -->
+        <label>Air Pollution CO2:</label>
+        <p x-text="current_weather.air_pollution.list[0].components.co"></p>
     </div>
 </body>
 <script>
