@@ -4,58 +4,114 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <meta charset="UTF-8">
     <title>Weather App</title>
+    <style>
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .weather-container {
+            display: flex;
+            gap: 20px;
+        }
+        .weather-section {
+            flex: 1;
+        }
+    </style>
 </head>
 <body>
     <h1>Weather App</h1>
-    <div x-data="weather" x-cloak>
-        <input type="text" name="search" x-model.debounce.500ms="search" placeholder="Enter location"></input>
 
-        <!-- Label for Current Temperature -->
-        <style>
-            label {
-                font-weight: bold;
-                margin-right: 10px;
-            }
-        </style>
-        <label>Current Temperature:</label>
-        <p x-text="current_weather.main.temp"></p>
+    <!-- Flexbox container for side-by-side display -->
+    <div class="weather-container">
 
-        <!-- Label for Feels Like Temperature -->
-        <label>Feels Like Temperature:</label>
-        <p x-text="current_weather.main.feels_like"></p>
+        <!-- Current Weather Section -->
+        <div x-data="weather" x-cloak class="weather-section">
+            <input type="text" name="search" x-model.debounce.500ms="search" placeholder="Enter location"></input>
 
-        <label>Current Humidity:</label>
-        <p x-text="current_weather.main.humidity"></p>
+            <label>Current Temperature:</label>
+            <p x-text="current_weather.main.temp"></p>
 
-        <label>Current Max Temperature:</label>
-        <p x-text="current_weather.main.temp_max"></p>
+            <label>Feels Like Temperature:</label>
+            <p x-text="current_weather.main.feels_like"></p>
 
-        <label>Current Min Temperature:</label>
-        <p x-text="current_weather.main.temp_min"></p>
+            <label>Current Humidity:</label>
+            <p x-text="current_weather.main.humidity"></p>
 
-        <label>Weather Description:</label>
-        <p x-text="current_weather.weather[0].description"></p>
+            <label>Current Max Temperature:</label>
+            <p x-text="current_weather.main.temp_max"></p>
 
-        <!-- Label for Air Pollution CO2 -->
-        <label>Air Pollution CO2:</label>
-        <p x-text="current_weather.air_pollution.list[0].components.co"></p>
+            <label>Current Min Temperature:</label>
+            <p x-text="current_weather.main.temp_min"></p>
+
+            <label>Weather Description:</label>
+            <p x-text="current_weather.weather[0].description"></p>
+
+            <label>Wind Speed:</label>
+            <p x-text="current_weather.wind.speed"></p>
+
+            <label>Air Pollution CO2:</label>
+            <p x-text="current_weather.air_pollution.list[0].components.co"></p>
+        </div>
+
+        <!-- Forecast Section -->
+        <div x-data="forecast" x-cloak class="weather-section">
+            <input type="text" name="search" x-model.debounce.500ms="search" placeholder="Enter location"></input>
+
+            <label>Forecast Temperature:</label>
+            <p x-text="current_weather.main.temp"></p>
+
+            <label>Forecast Feels Like Temperature:</label>
+            <p x-text="current_weather.main.feels_like"></p>
+
+            <label>Forecast Humidity:</label>
+            <p x-text="current_weather.main.humidity"></p>
+
+            <label>Forecast Max Temperature:</label>
+            <p x-text="current_weather.main.temp_max"></p>
+
+            <label>Forecast Min Temperature:</label>
+            <p x-text="current_weather.main.temp_min"></p>
+
+            <label>Forecast Description:</label>
+            <p x-text="current_weather.weather[0].description"></p>
+
+            <label>Forecast Wind Speed:</label>
+            <p x-text="current_weather.wind.speed"></p>
+        </div>
     </div>
-</body>
-<script>
-    document.addEventListener("alpine:init", () => {
-        Alpine.data("weather", () => ({
-            current_weather: {},
-            search:"Paris",
-            async init() {
-                this.$watch("search", async (value) => {
+
+    <script>
+        document.addEventListener("alpine:init", () => {
+            Alpine.data("weather", () => ({
+                current_weather: {},
+                search: "Paris",
+                async init() {
+                    this.$watch("search", async (value) => {
+                        await this.fetch_data()
+                    })
                     await this.fetch_data()
-                })
-                await this.fetch_data()
-            },
-            async fetch_data() {
-                this.current_weather = await (await fetch("/weather/" + this.search)).json()
-            },
-        }))
-    })
-</script>
+                },
+                async fetch_data() {
+                    this.current_weather = await (await fetch("/weather/" + this.search)).json()
+                },
+            }))
+        })
+
+        document.addEventListener("alpine:init", () => {
+            Alpine.data("forecast", () => ({
+                current_weather: {},
+                search: "Paris",
+                async init() {
+                    this.$watch("search", async (value) => {
+                        await this.fetch_data()
+                    })
+                    await this.fetch_data()
+                },
+                async fetch_data() {
+                    this.current_weather = await (await fetch("/forecast/" + this.search)).json()
+                },
+            }))
+        })
+    </script>
+</body>
 </html>
